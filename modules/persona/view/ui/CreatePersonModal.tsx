@@ -127,7 +127,6 @@ export default function CreatePersonModal({
               <button
                 type="submit"
                 disabled={!canSubmit || loading}
-                onClick={() => setLoading(true)}
                 className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {loading ? "Creating..." : "Crear"}

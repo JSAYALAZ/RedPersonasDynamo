@@ -35,11 +35,14 @@ export default function page() {
 
   const createUser = async (input: PersonCreateDTO) => {
     setLoading(true);
+    console.log(input);
+    
     try {
       const { data } = await axios.post<ApiResponse>("/api/person", input);
       if (data.success) {
         toast.success(data.message);
       }
+      
       refetch();
     } catch (error) {
       if (isAxiosApiError(error)) {
