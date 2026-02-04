@@ -1,4 +1,5 @@
 import {
+  BatchGetCommand,
   BatchWriteCommand,
   GetCommand,
   PutCommand,
@@ -77,16 +78,12 @@ async function sendWithRetry(params: any, attempt = 0) {
 }
 
 function makeRelations(userCount = 950, relCount = 50000) {
-  const types = [
-    "AMIGO",
-    "FAMILIA",
-    "TRABAJO",
-    "CONOCIDO",
-  ];
+  const types = ["AMIGO", "FAMILIA", "TRABAJO", "CONOCIDO"];
   const relations: any[] = [];
   const seen = new Set<string>();
 
-  while (relations.length < relCount * 2) { // *2 por bidireccional
+  while (relations.length < relCount * 2) {
+    // *2 por bidireccional
     const a = 1 + Math.floor(Math.random() * userCount);
     let b = 1 + Math.floor(Math.random() * userCount);
     while (b === a) b = 1 + Math.floor(Math.random() * userCount);
@@ -232,14 +229,203 @@ export class DyUser
     return res.Item.name as string;
   }
   async intyect(): Promise<void> {
-
     const relations = makeRelations();
 
     console.log(`Relations: ${relations.length}`);
 
-
     await batchWriteAll(TABLE_RELATIONS, relations);
 
     console.log("All seeded ✅");
+  }
+
+  async mostRelationalPerson(): Promise<{
+    person: PersonViewRaw;
+    relations: RelationRaw[];
+  }> {
+    const profilesRes = await dynamo_client.send(
+      new QueryCommand({
+        TableName: "SocialGraph",
+        IndexName: "GSI1",
+        KeyConditionExpression: "GSI1PK = :p",
+        ExpressionAttributeValues: { ":p": "PROFILE" },
+        ProjectionExpression: "pk, #n, nickname, residence",
+        ExpressionAttributeNames: { "#n": "name" },
+      }),
+    );
+
+    const profiles = profilesRes.Items ?? [];
+    if (profiles.length === 0) throw AppError.notFound("No users found");
+
+    // simple concurrency limiter
+    const limit = 8;
+    let i = 0;
+
+    const counts: Array<{ item: any; count: number }> = [];
+    async function worker() {
+      while (i < profiles.length) {
+        const idx = i++;
+        const item = profiles[idx];
+
+        const relCountRes = await dynamo_client.send(
+          new QueryCommand({
+            TableName: "SocialGraph",
+            KeyConditionExpression: "pk = :pk AND begins_with(sk, :sk)",
+            ExpressionAttributeValues: { ":pk": item.pk, ":sk": "REL#" },
+            Select: "COUNT",
+          }),
+        );
+
+        counts[idx] = { item, count: relCountRes.Count ?? 0 };
+      }
+    }
+
+    await Promise.all(
+      Array.from({ length: Math.min(limit, profiles.length) }, worker),
+    );
+
+    // pick max
+    let best = counts[0];
+    for (const c of counts) if (c.count > best.count) best = c;
+
+    // fetch relations of best user
+    const relationsRes = await dynamo_client.send(
+      new QueryCommand({
+        TableName: "SocialGraph",
+        KeyConditionExpression: "pk = :pk AND begins_with(sk, :sk)",
+        ExpressionAttributeValues: { ":pk": best.item.pk, ":sk": "REL#" },
+        ProjectionExpression: "importance, partner, typeGroup",
+      }),
+    );
+
+    const relations: RelationRaw[] = (relationsRes.Items ?? []).map(
+      (r: any) => ({
+        importance: r.importance,
+        otherId: "Sin definir",
+        partnerName: r.partner,
+        typeGroup: r.typeGroup,
+      }),
+    );
+
+    return {
+      person: {
+        name: best.item.name,
+        nickname: best.item.nickname,
+        residence: best.item.residence,
+      },
+      relations,
+    };
+  }
+
+  
+  async commonFriends(
+    id1: string,
+    id2: string,
+  ): Promise<{
+    person1: PersonViewRaw;
+    person2: PersonViewRaw;
+    common: PersonViewRaw[];
+  }> {
+    const pk1 = `PERSON#u${id1}`;
+    const pk2 = `PERSON#u${id2}`;
+
+    // 1) Perfiles
+    const [p1Res, p2Res] = await Promise.all([
+      dynamo_client.send(
+        new GetCommand({
+          TableName: "SocialGraph",
+          Key: { pk: pk1, sk: "PROFILE" },
+        }),
+      ),
+      dynamo_client.send(
+        new GetCommand({
+          TableName: "SocialGraph",
+          Key: { pk: pk2, sk: "PROFILE" },
+        }),
+      ),
+    ]);
+
+    if (!p1Res.Item) throw AppError.notFound(`Person ${id1} not found`);
+    if (!p2Res.Item) throw AppError.notFound(`Person ${id2} not found`);
+
+    const person1: PersonViewRaw = {
+      name: p1Res.Item.name,
+      nickname: p1Res.Item.nickname,
+      residence: p1Res.Item.residence,
+    };
+
+    const person2: PersonViewRaw = {
+      name: p2Res.Item.name,
+      nickname: p2Res.Item.nickname,
+      residence: p2Res.Item.residence,
+    };
+
+    // 2) Relaciones (solo IDs del otro)
+    const [r1Res, r2Res] = await Promise.all([
+      dynamo_client.send(
+        new QueryCommand({
+          TableName: "SocialGraph",
+          KeyConditionExpression: "pk = :pk AND begins_with(sk, :sk)",
+          ExpressionAttributeValues: { ":pk": pk1, ":sk": "REL#" },
+        }),
+      ),
+      dynamo_client.send(
+        new QueryCommand({
+          TableName: "SocialGraph",
+          KeyConditionExpression: "pk = :pk AND begins_with(sk, :sk)",
+          ExpressionAttributeValues: { ":pk": pk2, ":sk": "REL#" },
+        }),
+      ),
+    ]);
+    const ids1 = new Set(
+      (r1Res.Items ?? [])
+        .map((x: any) => (x.sk.split("u")[1] ?? "").trim())
+        .filter(Boolean),
+    );
+
+    const ids2 = new Set(
+      (r2Res.Items ?? [])
+        .map((x: any) => (x.sk.split("u")[1] ?? "").trim())
+        .filter(Boolean),
+    );
+
+    
+    // 3) Intersección
+    const commonIds: string[] = [];
+    for (const fid of ids1) {
+      if (ids2.has(fid)) commonIds.push(fid);
+    }
+
+    if (commonIds.length === 0) {
+      return { person1, person2, common: [] };
+    }
+
+    // 4) BatchGet perfiles de amigos comunes (máx 100 keys por request)
+    const keys = commonIds.slice(0, 100).map((fid) => ({
+      pk: `PERSON#u${fid}`,
+      sk: "PROFILE",
+    }));
+
+    const batch = await dynamo_client.send(
+      new BatchGetCommand({
+        RequestItems: {
+          SocialGraph: {
+            Keys: keys,
+            ProjectionExpression: "#n, nickname, residence, pk",
+            ExpressionAttributeNames: { "#n": "name" },
+          },
+        },
+      }),
+    );
+
+    const common: PersonViewRaw[] = (batch.Responses?.SocialGraph ?? []).map(
+      (it: any) => ({
+        name: it.name,
+        nickname: it.nickname,
+        residence: it.residence,
+        // si quieres devolver el id también, lo sacas de it.pk
+      }),
+    );
+
+    return { person1, person2, common };
   }
 }

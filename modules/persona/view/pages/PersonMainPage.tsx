@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { PersonListDTO } from "../../aplication/dto/PersonListDTO";
+import Link from "next/link";
 
 export default function PersonMainPage({
   d,
@@ -17,6 +18,11 @@ export default function PersonMainPage({
 
   const canViewDetails = selectedIds.length === 1;
   const selectedId = canViewDetails ? selectedIds[0] : null;
+
+  // ✅ NUEVO: exactamente 2 seleccionados
+  const canViewCommon = selectedIds.length === 2;
+  const id1 = canViewCommon ? selectedIds[0] : null;
+  const id2 = canViewCommon ? selectedIds[1] : null;
 
   return (
     <div className="w-[100dvw] h-[100dvh] overflow-auto bg-gray-50 text-gray-900 font-sans">
@@ -38,6 +44,35 @@ export default function PersonMainPage({
                   {selectedIds.length}/2
                 </span>
               </p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Link
+              href={"/most_relation"}
+              target="_blank"
+              className="group inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700"
+            >
+              <span>Ver persona con más relaciones</span>
+              <span className="transition-transform group-hover:translate-x-1">
+                →
+              </span>
+            </Link>
+
+            {/* ✅ NUEVO: botón visible solo con 2 seleccionados */}
+            {canViewCommon && id1 && id2 && (
+              <Link
+                href={`/common?id1=${encodeURIComponent(id1)}&id2=${encodeURIComponent(
+                  id2
+                )}`}
+                className="group inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-[0.98]"
+                title="Ver amigos en común"
+              >
+                <span>Ver amigos en común</span>
+                <span className="transition-transform group-hover:translate-x-1">
+                  →
+                </span>
+              </Link>
             )}
           </div>
 
@@ -111,10 +146,6 @@ export default function PersonMainPage({
                       <span className="truncate font-mono text-[11px] text-gray-400">
                         {p.id}
                       </span>
-
-                      {/* <span className="opacity-60">•</span> */}
-
-                      {/* <span className="text-gray-600">@{p.nickname}</span> */}
                     </div>
                   </div>
                 </div>

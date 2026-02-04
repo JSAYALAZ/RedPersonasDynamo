@@ -19,4 +19,8 @@ export async function GET(req: NextRequest, { params }: Ctx) {
 const loader = {
   person: async (req: NextRequest) =>
     (await import("@/modules/persona/interfaces/http/GET")).GET(req),
+  most_relation: async (req: NextRequest) =>
+    (await import("@/modules/persona/interfaces/http/GET")).MOST_RELATION(),
+  common: async (req: NextRequest) =>
+    (await import("@/modules/persona/interfaces/http/GET")).COMMOND_FRIEND(req),
 } as const;

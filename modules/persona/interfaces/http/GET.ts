@@ -31,3 +31,24 @@ export async function GET_ID(id: string) {
     return ResponseHandler.error(error);
   }
 }
+export async function MOST_RELATION() {
+  try {
+    const controller = buildPersonController();
+    const res = await controller.mostRelationalPerson();
+    return ResponseHandler.success("Correcto", res);
+  } catch (error) {
+    return ResponseHandler.error(error);
+  }
+}
+export async function COMMOND_FRIEND(req: NextRequest) {
+  try {
+    const controller = buildPersonController();
+    const res = await controller.commonFriends({
+      id1: req.nextUrl.searchParams.get("id1") || "1",
+      id2: req.nextUrl.searchParams.get("id2") || "2",
+    });
+    return ResponseHandler.success("Correcto", res);
+  } catch (error) {
+    return ResponseHandler.error(error);
+  }
+}

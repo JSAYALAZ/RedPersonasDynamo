@@ -1,6 +1,6 @@
 "use client";
 
-import PersonViewPage from "@/modules/persona/view/pages/PersonViewPage";
+import PersonViewPage from "@/modules/persona/view/pages/PersonViewPage copy";
 import { use } from "react";
 
 type ParamsT = {

@@ -20,6 +20,18 @@ export type RelationRaw = {
 export interface PersonRepository {
   createUser(input: Persona): Promise<void>;
   list(): Promise<PersonListRaw[]>;
-  view(id: number): Promise<{person:PersonViewRaw, relations: RelationRaw[]} | null>;
+  view(
+    id: number,
+  ): Promise<{ person: PersonViewRaw; relations: RelationRaw[] } | null>;
   intyect(): Promise<void>;
+
+  mostRelationalPerson(): Promise<{
+    person: PersonViewRaw;
+    relations: RelationRaw[];
+  }>;
+  commonFriends(id1:string, id2:string): Promise<{
+    person1: PersonViewRaw;
+    person2: PersonViewRaw;
+    common: PersonViewRaw[];
+  }>;
 }
