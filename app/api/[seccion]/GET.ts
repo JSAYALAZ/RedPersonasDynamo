@@ -18,5 +18,5 @@ export async function GET(req: NextRequest, { params }: Ctx) {
 
 const loader = {
   person: async (req: NextRequest) =>
-    (await import("@/modules/persona/interfaces/http/GET")).GET(req)
+    (await import("@/modules/persona/interfaces/http/GET")).GET(req),
 } as const;

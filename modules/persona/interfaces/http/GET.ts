@@ -12,6 +12,16 @@ export async function GET(req: NextRequest) {
     return ResponseHandler.error(error);
   }
 }
+export async function inyectarDatos(req: NextRequest) {
+  try {
+    const controller = buildPersonController();
+
+    await controller.inyectData();
+    return ResponseHandler.success("Correcto", {});
+  } catch (error) {
+    return ResponseHandler.error(error);
+  }
+}
 export async function GET_ID(id: string) {
   try {
     const controller = buildPersonController();

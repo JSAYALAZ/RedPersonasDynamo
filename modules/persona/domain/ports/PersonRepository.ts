@@ -21,4 +21,5 @@ export interface PersonRepository {
   createUser(input: Persona): Promise<void>;
   list(): Promise<PersonListRaw[]>;
   view(id: number): Promise<{person:PersonViewRaw, relations: RelationRaw[]} | null>;
+  intyect(): Promise<void>;
 }

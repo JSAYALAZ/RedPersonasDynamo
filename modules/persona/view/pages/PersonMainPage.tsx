@@ -54,7 +54,7 @@ export default function PersonMainPage({
       </header>
 
       <main className="mx-auto w-full max-w-3xl p-5">
-        <div className="grid gap-3">
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-3">
           {items.map((p) => {
             const selected = selectedIds.includes(p.id);
 
@@ -68,14 +68,14 @@ export default function PersonMainPage({
                   if (e.key === "Enter" || e.key === " ") onToggleSelect(p.id);
                 }}
                 className={[
-                  "rounded-2xl border p-4 transition-all duration-200 shadow-sm",
+                  "rounded-2xl border p-3 transition-all duration-200 shadow-sm",
                   "cursor-pointer bg-white hover:bg-gray-100 hover:shadow-md",
                   selected
                     ? "border-emerald-400 ring-2 ring-emerald-100 bg-emerald-50"
                     : "border-gray-200",
                 ].join(" ")}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <div
                     aria-hidden
                     className={[
@@ -112,9 +112,9 @@ export default function PersonMainPage({
                         {p.id}
                       </span>
 
-                      <span className="opacity-60">•</span>
+                      {/* <span className="opacity-60">•</span> */}
 
-                      <span className="text-gray-600">@{p.nickname}</span>
+                      {/* <span className="text-gray-600">@{p.nickname}</span> */}
                     </div>
                   </div>
                 </div>
